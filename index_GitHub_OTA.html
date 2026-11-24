@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ESP32-CAM 一鍵校時</title>
+<style>
+:root{color-scheme:light;font-family:system-ui,-apple-system,'Noto Sans TC',sans-serif}body{margin:0;background:#f3f6fb;color:#15243a}.wrap{max-width:480px;margin:36px auto;padding:0 18px}.panel{background:#fff;border-radius:20px;padding:26px;box-shadow:0 10px 32px #1b3a6515}h1{font-size:1.45rem;margin:0 0 8px}.sub{color:#65748a;font-size:.9rem;line-height:1.65;margin:0 0 24px}.clock{font-size:1.65rem;font-weight:700;font-variant-numeric:tabular-nums;text-align:center;margin:14px 0 24px}.small{font-size:.82rem;color:#68788d;text-align:center}button{width:100%;padding:15px 16px;border:0;border-radius:12px;font-size:1rem;font-weight:700;margin:6px 0;cursor:pointer;background:#1769e0;color:#fff}button.secondary{background:#eaf1ff;color:#1959af}button:disabled{opacity:.45;cursor:not-allowed}.status{margin-top:20px;padding:14px;border-radius:12px;background:#f1f5f9;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere;font-size:.9rem}.success{background:#e8f7ed;color:#146332}.error{background:#fff0ee;color:#a22b23}.note{font-size:.84rem;line-height:1.7;color:#65748a;margin-top:20px}strong{color:#243952}
+</style>
+</head>
+<body><main class="wrap"><section class="panel">
+<h1>📷 ESP32-CAM 一鍵校時</h1>
+<p class="sub">Android Chrome · BLE 連線 · 台灣時間 UTC+8</p>
+<div class="small">手機目前時間</div><div id="phoneTime" class="clock">--</div>
+<button id="connect">① 連線 ESP32-CAM</button>
+<button id="sync" class="secondary" disabled>② 同步手機時間</button>
+<button id="read" class="secondary" disabled>③ 讀取 ESP32-CAM 時間</button>
+<hr><h2>BLE OTA 韌體更新</h2><p class="note">從 GitHub 選擇韌體版本。更新時保持 Chrome 在前景。</p><div id="version" class="small">韌體版本：--</div><label for="firmware">選擇 GitHub 韌體版本</label><select id="firmware" style="width:100%;padding:12px"><option value="">載入版本清單中…</option></select><p id="description" class="note"></p><button id="ota" disabled>開始韌體更新</button><button id="abort" class="secondary" disabled>取消更新</button><progress id="progress" value="0" max="100" style="width:100%"></progress><div id="percent" class="small">0%</div><div id="status" class="status" role="status" aria-live="polite">尚未連線</div>
+<p class="note">首次連線時，Chrome 會要求選擇藍牙裝置。由於目前 ESP32-CAM 在掃描清單可能顯示 N/A，請選擇你已透過斷電測試確認的裝置。若清單中有多個候選裝置，先不要猜測。</p>
+<p class="note">校時只會在按下「同步手機時間」時進行；單純連線不會自動改變 ESP32-CAM 時間。ESP32-CAM 重新啟動或斷電後，需要再次校時。</p>
+</section></main>
+<script>
+'use strict';
+const SERVICE='d93b0001-3f6b-4b24-8c74-ec4d93291f50';
+const COMMAND='d93b0002-3f6b-4b24-8c74-ec4d93291f50';
+const STATUS='d93b0003-3f6b-4b24-8c74-ec4d93291f50';
+const $=id=>document.getElementById(id);
+let device=null,writeChar=null,readChar=null,otaChar=null,busy=false,cancel=false,updated=false;
+const OTA="d93b0004-3f6b-4b24-8c74-ec4d93291f50";
+const enc=new TextEncoder(),dec=new TextDecoder();
+const pad=n=>String(n).padStart(2,'0');
+function taiwanTime(){const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Taipei',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(new Date());const p=Object.fromEntries(parts.map(x=>[x.type,x.value]));return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}:${p.second}`;}
+function updateClock(){$('phoneTime').textContent=taiwanTime();}
+updateClock();setInterval(updateClock,1000);
+function show(message,kind=''){$('status').textContent=message;$('status').className='status '+kind;}
+function connected(ok){$('sync').disabled=!ok;$('read').disabled=!ok;$('connect').textContent=ok?'重新連線 ESP32-CAM':'① 連線 ESP32-CAM';}
+function disconnect(){writeChar=null;readChar=null;otaChar=null;$("ota").disabled=true;connected(false);show('BLE 已斷線，請重新連線。');}
+function decodeValue(v){return dec.decode(new Uint8Array(v.buffer,v.byteOffset,v.byteLength));}
+async function readStatus(){if(!readChar)throw new Error('尚未連線');const value=await readChar.readValue();return decodeValue(value);}
+async function send(command){if(!writeChar)throw new Error('尚未連線');const bytes=enc.encode(command);if(writeChar.writeValueWithResponse)await writeChar.writeValueWithResponse(bytes);else await writeChar.writeValue(bytes);}
+async function waitReply(){await new Promise(r=>setTimeout(r,350));return readStatus();}
+$('connect').onclick=async()=>{
+ if(!navigator.bluetooth){show('此瀏覽器不支援 Web Bluetooth，或目前不是 HTTPS 安全網頁。請使用 Android Chrome 開啟 HTTPS 網址。','error');return;}
+ try{
+  show('請在 Chrome 的裝置選擇視窗中選擇你的 ESP32-CAM…');
+  if(device?.gatt?.connected)device.gatt.disconnect();
+  device=await navigator.bluetooth.requestDevice({filters:[{services:[SERVICE]}],optionalServices:[SERVICE]});
+  device.addEventListener('gattserverdisconnected',disconnect);
+  const server=await device.gatt.connect();const service=await server.getPrimaryService(SERVICE);
+  writeChar=await service.getCharacteristic(COMMAND);readChar=await service.getCharacteristic(STATUS);
+  try{otaChar=await service.getCharacteristic(OTA);$('ota').disabled=false;await send('VERSION');$('version').textContent=await waitReply();}catch(e){otaChar=null;$('ota').disabled=true;}
+   connected(true);if(updated){await send('TIME='+taiwanTime());await waitReply();updated=false;}show('已連線：'+(device.name||'未命名裝置')+'\n'+await readStatus(),'success');
+ }catch(e){connected(false);show('連線失敗：'+e.message,'error');}
+};
+$('sync').onclick=async()=>{
+ try{const t=taiwanTime();show('正在同步：'+t);await send('TIME='+t);const reply=await waitReply();show('手機傳送：'+t+'\nESP32-CAM 回覆：'+reply,reply.startsWith('OK:TIME=')?'success':'error');}
+ catch(e){show('同步失敗：'+e.message,'error');}
+};
+$('read').onclick=async()=>{
+ try{await send('GET');const reply=await waitReply();show('ESP32-CAM 回覆：'+reply,reply.startsWith('TIME=')?'success':'error');}
+ catch(e){show('讀取失敗：'+e.message,'error');}
+};
+
+let versions=[];
+async function loadVersions(){try{const r=await fetch('firmware/versions.json',{cache:'no-store'});if(!r.ok)throw Error('版本清單下載失敗');const m=await r.json();versions=m.versions.filter(v=>typeof v.version==='string'&&typeof v.file==='string'&&/^[a-zA-Z0-9_.-]+\.bin$/.test(v.file));const sel=$('firmware');sel.replaceChildren(new Option('請選擇版本',''));versions.forEach((v,i)=>sel.add(new Option('v'+v.version+' — '+(v.description||''),String(i))));$('description').textContent=versions.length?'請選擇版本':'尚無已發布韌體';}catch(e){$('firmware').replaceChildren(new Option('無法載入版本清單',''));$('description').textContent=e.message;}}
+$('firmware').onchange=()=>{$('description').textContent=versions[Number($('firmware').value)]?.description||'';};loadVersions();
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function otaRead(){return decodeValue(await otaChar.readValue());}
+async function expect(expected){for(let i=0;i<100;i++){if(cancel)throw Error('已取消');const v=await otaRead();if(v===expected)return;if(v.startsWith('ERR:'))throw Error(v);await sleep(30);}throw Error('等待裝置確認逾時：'+expected);}
+async function control(cmd,expected){await send(cmd);await expect(expected);}
+$('abort').onclick=()=>{cancel=true;};
+$('ota').onclick=async()=>{
+ if(busy||!otaChar)return;
+ const file=versions[Number($('firmware').value)];
+ if(!$('firmware').value||!file){show('請選擇已發布的韌體版本','error');return;}
+ if(!confirm('確認更新韌體？請保持手機靠近裝置，勿斷電。'))return;
+ busy=true;cancel=false;for(const id of ['connect','sync','read','ota'])$(id).disabled=true;$('abort').disabled=false;
+ try{
+ const response=await fetch(new URL("firmware/"+file.file,location.href),{cache:"no-store"});if(!response.ok)throw Error("韌體下載失敗");const bytes=new Uint8Array(await response.arrayBuffer());if(bytes.length>1966080||bytes[0]!==0xe9||/merged|bootloader|partitions/i.test(file.file))throw Error('不是合適的應用程式韌體或檔案過大');
+ const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),x=>x.toString(16).padStart(2,'0')).join('');
+ await control('OTA:PREP','READY');for(let i=0;i<64;i+=16)await control('H:'+hash.slice(i,i+16),'HASH:'+(i+16));
+ await control('OTA:BEGIN:'+bytes.length,'ACK:0');
+ for(let offset=0;offset<bytes.length;){if(cancel)throw Error('已取消');const n=Math.min(16,bytes.length-offset),packet=new Uint8Array(n+4);new DataView(packet.buffer).setUint32(0,offset,true);packet.set(bytes.subarray(offset,offset+n),4);await otaChar.writeValueWithResponse(packet);offset+=n;await expect('ACK:'+offset);const percent=100*offset/bytes.length;$('progress').value=percent;$('percent').textContent=percent.toFixed(1)+'%';}
+ await control('OTA:END','DONE');updated=true;show('韌體已驗證，裝置即將重啟。請等待約 15 秒後重新連線，網頁將自動校時。','success');
+ }catch(e){try{if(writeChar)await send('OTA:ABORT');}catch(_){}show('更新未確認完成：'+e.message,'error');}
+ finally{busy=false;$('abort').disabled=true;$('connect').disabled=false;const ok=!!writeChar;$('sync').disabled=!ok;$('read').disabled=!ok;$('ota').disabled=!otaChar;}
+};
+</script></body></html>
