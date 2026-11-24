@@ -5,6 +5,11 @@
       "version": "1.1.0",
       "file": "ESP32CAM_v1.1.0.bin",
       "description": "Initial BLE OTA firmware"
+    },
+    {
+      "version": "1.2",
+      "file": "ESP32_CAM_BLE_OTA_Schedule.ino.bin",
+      "description": "網頁控制開關鏡頭燈條時間"
     }
   ]
 }
