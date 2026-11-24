@@ -2,19 +2,19 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ESP32-CAM 一鍵校時</title>
+<title>ESP32-CAM 控制中心</title>
 <style>
 :root{color-scheme:light;font-family:system-ui,-apple-system,'Noto Sans TC',sans-serif}body{margin:0;background:#f3f6fb;color:#15243a}.wrap{max-width:480px;margin:36px auto;padding:0 18px}.panel{background:#fff;border-radius:20px;padding:26px;box-shadow:0 10px 32px #1b3a6515}h1{font-size:1.45rem;margin:0 0 8px}.sub{color:#65748a;font-size:.9rem;line-height:1.65;margin:0 0 24px}.clock{font-size:1.65rem;font-weight:700;font-variant-numeric:tabular-nums;text-align:center;margin:14px 0 24px}.small{font-size:.82rem;color:#68788d;text-align:center}button{width:100%;padding:15px 16px;border:0;border-radius:12px;font-size:1rem;font-weight:700;margin:6px 0;cursor:pointer;background:#1769e0;color:#fff}button.secondary{background:#eaf1ff;color:#1959af}button:disabled{opacity:.45;cursor:not-allowed}.status{margin-top:20px;padding:14px;border-radius:12px;background:#f1f5f9;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere;font-size:.9rem}.success{background:#e8f7ed;color:#146332}.error{background:#fff0ee;color:#a22b23}.note{font-size:.84rem;line-height:1.7;color:#65748a;margin-top:20px}strong{color:#243952}
-</style>
+fieldset{border:1px solid #dbe3ee;border-radius:12px;margin:12px 0;padding:12px}legend{font-weight:700}.times{display:grid;grid-template-columns:1fr 1fr;gap:10px}.times label{min-width:0;font-size:.85rem}.times input{box-sizing:border-box;width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;font:inherit}summary{cursor:pointer;font-weight:700;padding:12px 0}h2{font-size:1.15rem}</style>
 </head>
 <body><main class="wrap"><section class="panel">
-<h1>📷 ESP32-CAM 一鍵校時</h1>
+<h1>📷 ESP32-CAM 控制中心</h1>
 <p class="sub">Android Chrome · BLE 連線 · 台灣時間 UTC+8</p>
 <div class="small">手機目前時間</div><div id="phoneTime" class="clock">--</div>
 <button id="connect">① 連線 ESP32-CAM</button>
 <button id="sync" class="secondary" disabled>② 同步手機時間</button>
 <button id="read" class="secondary" disabled>③ 讀取 ESP32-CAM 時間</button>
-<hr><h2>BLE OTA 韌體更新</h2><p class="note">從 GitHub 選擇韌體版本。更新時保持 Chrome 在前景。</p><div id="version" class="small">韌體版本：--</div><label for="firmware">選擇 GitHub 韌體版本</label><select id="firmware" style="width:100%;padding:12px"><option value="">載入版本清單中…</option></select><p id="description" class="note"></p><button id="ota" disabled>開始韌體更新</button><button id="abort" class="secondary" disabled>取消更新</button><progress id="progress" value="0" max="100" style="width:100%"></progress><div id="percent" class="small">0%</div><div id="status" class="status" role="status" aria-live="polite">尚未連線</div>
+<hr><h2>定時排程</h2><p class="note">拍照間隔固定 15 秒。結束時間早於開始時間代表跨午夜；相同時間不執行。</p><fieldset id="scheduleFields" disabled><fieldset><legend>LED 燈條</legend><label><input type="checkbox" id="ledOn" checked> 啟用</label><div class="times"><label>開始時間<input type="time" id="ledStart" value="17:00" required></label><label>結束時間<input type="time" id="ledEnd" value="07:00" required></label></div></fieldset><fieldset><legend>第一組拍照</legend><label><input type="checkbox" id="p1On" checked> 啟用</label><div class="times"><label>開始時間<input type="time" id="p1Start" value="09:00" required></label><label>結束時間<input type="time" id="p1End" value="09:05" required></label></div></fieldset><fieldset><legend>第二組拍照</legend><label><input type="checkbox" id="p2On" checked> 啟用</label><div class="times"><label>開始時間<input type="time" id="p2Start" value="00:30" required></label><label>結束時間<input type="time" id="p2End" value="00:35" required></label></div></fieldset></fieldset><button id="saveCfg" disabled>儲存排程至 ESP32-CAM</button><button id="readCfg" class="secondary" disabled>讀取目前排程</button><div id="cfgStatus" class="note" role="status">連線後讀取裝置設定。</div><hr><details><summary>進階功能：BLE OTA 韌體更新</summary><p class="note">從 GitHub 選擇韌體版本。更新時保持 Chrome 在前景。</p><div id="version" class="small">韌體版本：--</div><label for="firmware">選擇 GitHub 韌體版本</label><select id="firmware" style="width:100%;padding:12px"><option value="">載入版本清單中…</option></select><p id="description" class="note"></p><button id="ota" disabled>開始韌體更新</button><button id="abort" class="secondary" disabled>取消更新</button><progress id="progress" value="0" max="100" style="width:100%"></progress><div id="percent" class="small">0%</div></details><div id="status" class="status" role="status" aria-live="polite">尚未連線</div>
 <p class="note">首次連線時，Chrome 會要求選擇藍牙裝置。由於目前 ESP32-CAM 在掃描清單可能顯示 N/A，請選擇你已透過斷電測試確認的裝置。若清單中有多個候選裝置，先不要猜測。</p>
 <p class="note">校時只會在按下「同步手機時間」時進行；單純連線不會自動改變 ESP32-CAM 時間。ESP32-CAM 重新啟動或斷電後，需要再次校時。</p>
 </section></main>
@@ -32,7 +32,7 @@ function taiwanTime(){const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Asi
 function updateClock(){$('phoneTime').textContent=taiwanTime();}
 updateClock();setInterval(updateClock,1000);
 function show(message,kind=''){$('status').textContent=message;$('status').className='status '+kind;}
-function connected(ok){$('sync').disabled=!ok;$('read').disabled=!ok;$('connect').textContent=ok?'重新連線 ESP32-CAM':'① 連線 ESP32-CAM';}
+function connected(ok){cfgControls(ok);$('sync').disabled=!ok;$('read').disabled=!ok;$('connect').textContent=ok?'重新連線 ESP32-CAM':'① 連線 ESP32-CAM';}
 function disconnect(){writeChar=null;readChar=null;otaChar=null;$("ota").disabled=true;connected(false);show('BLE 已斷線，請重新連線。');}
 function decodeValue(v){return dec.decode(new Uint8Array(v.buffer,v.byteOffset,v.byteLength));}
 async function readStatus(){if(!readChar)throw new Error('尚未連線');const value=await readChar.readValue();return decodeValue(value);}
@@ -48,16 +48,16 @@ $('connect').onclick=async()=>{
   const server=await device.gatt.connect();const service=await server.getPrimaryService(SERVICE);
   writeChar=await service.getCharacteristic(COMMAND);readChar=await service.getCharacteristic(STATUS);
   try{otaChar=await service.getCharacteristic(OTA);$('ota').disabled=false;await send('VERSION');$('version').textContent=await waitReply();}catch(e){otaChar=null;$('ota').disabled=true;}
-   connected(true);if(updated){await send('TIME='+taiwanTime());await waitReply();updated=false;}show('已連線：'+(device.name||'未命名裝置')+'\n'+await readStatus(),'success');
+   connected(true);if(updated){await send('TIME='+taiwanTime());await waitReply();updated=false;}await readConfig();show('已連線：'+(device.name||'未命名裝置')+'\n'+await readStatus(),'success');
  }catch(e){connected(false);show('連線失敗：'+e.message,'error');}
 };
 $('sync').onclick=async()=>{
- try{const t=taiwanTime();show('正在同步：'+t);await send('TIME='+t);const reply=await waitReply();show('手機傳送：'+t+'\nESP32-CAM 回覆：'+reply,reply.startsWith('OK:TIME=')?'success':'error');}
- catch(e){show('同步失敗：'+e.message,'error');}
+ if(busy)return;cfgLock(true);try{const t=taiwanTime();show('正在同步：'+t);await send('TIME='+t);const reply=await waitReply();show('手機傳送：'+t+'\nESP32-CAM 回覆：'+reply,reply.startsWith('OK:TIME=')?'success':'error');}
+ catch(e){show('同步失敗：'+e.message,'error');}finally{cfgLock(false);}
 };
 $('read').onclick=async()=>{
- try{await send('GET');const reply=await waitReply();show('ESP32-CAM 回覆：'+reply,reply.startsWith('TIME=')?'success':'error');}
- catch(e){show('讀取失敗：'+e.message,'error');}
+ if(busy)return;cfgLock(true);try{await send('GET');const reply=await waitReply();show('ESP32-CAM 回覆：'+reply,reply.startsWith('TIME=')?'success':'error');}
+ catch(e){show('讀取失敗：'+e.message,'error');}finally{cfgLock(false);}
 };
 
 let versions=[];
@@ -65,23 +65,49 @@ async function loadVersions(){try{const r=await fetch('firmware/versions.json',{
 $('firmware').onchange=()=>{$('description').textContent=versions[Number($('firmware').value)]?.description||'';};loadVersions();
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function otaRead(){return decodeValue(await otaChar.readValue());}
-async function expect(expected){for(let i=0;i<100;i++){if(cancel)throw Error('已取消');const v=await otaRead();if(v===expected)return;if(v.startsWith('ERR:'))throw Error(v);await sleep(30);}throw Error('等待裝置確認逾時：'+expected);}
+async function expect(expected){for(let i=0;i<300;i++){if(cancel)throw Error('已取消');const v=await otaRead();if(v===expected)return;if(v.startsWith('ERR:'))throw Error(v);await sleep(30);}throw Error('等待裝置確認逾時：'+expected);}
 async function control(cmd,expected){await send(cmd);await expect(expected);}
+
+const cfgIds=['led','p1','p2'];let cfgLoaded=false;
+function cfgControls(ok){$('scheduleFields').disabled=!ok||busy||!cfgLoaded;$('saveCfg').disabled=!ok||busy||!cfgLoaded;$('readCfg').disabled=!ok||busy;if(!ok)cfgLoaded=false;}
+function cfgMessage(t){$('cfgStatus').textContent=t;}
+function parseCfg(s){const m=/^(?:OK:)?CFG=(\d+),(\d+),(\d+),(\d+),(\d+),(\d+),(\d+)$/.exec(s);if(!m)return null;const v=m.slice(1).map(Number);return v.slice(0,6).every(n=>n<1440)&&v[6]<=7?v:null;}
+function displayCfg(v){cfgIds.forEach((id,i)=>{for(const [suffix,j] of [['Start',0],['End',1]]){const n=v[i*2+j];$(id+suffix).value=pad(Math.floor(n/60))+':'+pad(n%60);}$(id+'On').checked=!!(v[6]&(1<<i));});}
+async function cfgReply(prefix){for(let i=0;i<40;i++){await sleep(150);const r=await readStatus();if(r.startsWith(prefix)||r.startsWith('ERR:'))return r;}throw Error('等待排程回覆逾時');}
+function cfgLock(on){busy=on;for(const id of ['connect','sync','read','ota'])$(id).disabled=on||(id==='ota'?!otaChar:id==='connect'?false:!writeChar);cfgControls(!!writeChar);}
+async function readConfig(){if(busy||!writeChar)return;cfgLock(true);try{await send('CFG?');const r=await cfgReply('CFG=');const v=parseCfg(r);if(!v)throw Error(r);displayCfg(v);cfgLoaded=true;cfgMessage('已讀取裝置目前排程。');}catch(e){cfgLoaded=false;cfgMessage('讀取失敗：'+e.message);}finally{cfgLock(false);}}
+$('readCfg').onclick=readConfig;
+$('saveCfg').onclick=async()=>{if(busy||!cfgLoaded||!writeChar)return;const v=[];let flags=0;for(const [i,id] of cfgIds.entries()){for(const suffix of ['Start','End']){const t=$(id+suffix).value;if(!/^([01]\d|2[0-3]):[0-5]\d$/.test(t)){cfgMessage('請填寫有效時間。');return;}const [h,m]=t.split(':').map(Number);v.push(h*60+m);}if($(id+'On').checked)flags|=1<<i;}v.push(flags);const cmd='CFG='+v.join(',');cfgLock(true);try{await send(cmd);const r=await cfgReply('OK:CFG=');if(r!=='OK:'+cmd)throw Error(r);await send('CFG?');const check=await cfgReply('CFG=');if(check!==cmd)throw Error('讀回設定不一致：'+check);displayCfg(v);cfgMessage('已儲存並讀回確認，排程立即生效。');}catch(e){cfgMessage('未確認儲存成功：'+e.message+'。請重新讀取。');}finally{cfgLock(false);}};
+
 $('abort').onclick=()=>{cancel=true;};
 $('ota').onclick=async()=>{
  if(busy||!otaChar)return;
  const file=versions[Number($('firmware').value)];
  if(!$('firmware').value||!file){show('請選擇已發布的韌體版本','error');return;}
  if(!confirm('確認更新韌體？請保持手機靠近裝置，勿斷電。'))return;
- busy=true;cancel=false;for(const id of ['connect','sync','read','ota'])$(id).disabled=true;$('abort').disabled=false;
+ busy=true;cfgControls(true);cancel=false;for(const id of ['connect','sync','read','ota'])$(id).disabled=true;$('abort').disabled=false;
  try{
  const response=await fetch(new URL("firmware/"+file.file,location.href),{cache:"no-store"});if(!response.ok)throw Error("韌體下載失敗");const bytes=new Uint8Array(await response.arrayBuffer());if(bytes.length>1966080||bytes[0]!==0xe9||/merged|bootloader|partitions/i.test(file.file))throw Error('不是合適的應用程式韌體或檔案過大');
  const hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),x=>x.toString(16).padStart(2,'0')).join('');
  await control('OTA:PREP','READY');for(let i=0;i<64;i+=16)await control('H:'+hash.slice(i,i+16),'HASH:'+(i+16));
  await control('OTA:BEGIN:'+bytes.length,'ACK:0');
- for(let offset=0;offset<bytes.length;){if(cancel)throw Error('已取消');const n=Math.min(16,bytes.length-offset),packet=new Uint8Array(n+4);new DataView(packet.buffer).setUint32(0,offset,true);packet.set(bytes.subarray(offset,offset+n),4);await otaChar.writeValueWithResponse(packet);offset+=n;await expect('ACK:'+offset);const percent=100*offset/bytes.length;$('progress').value=percent;$('percent').textContent=percent.toFixed(1)+'%';}
+ let chunk=16,batch=1;
+ // Older firmware has no OTA:CAP; use its original protocol.
+ await send('OTA:CAP');let cap='';for(let i=0;i<5;i++){await sleep(60);cap=await otaRead();if(cap.startsWith('CAP:'))break;}
+ if(/^CAP:\d+$/.test(cap)){chunk=Math.max(16,Math.min(240,Number(cap.slice(4))));batch=8;}
+ const started=performance.now();let offset=0;
+ while(offset<bytes.length){
+  for(let j=0;j<batch&&offset<bytes.length;j++){
+   if(cancel)throw Error('已取消');const n=Math.min(chunk,bytes.length-offset),packet=new Uint8Array(n+4);
+   new DataView(packet.buffer).setUint32(0,offset,true);packet.set(bytes.subarray(offset,offset+n),4);
+   await otaChar.writeValueWithResponse(packet);offset+=n;
+  }
+  await expect('ACK:'+offset);
+  const percent=100*offset/bytes.length,rate=offset/Math.max(.001,(performance.now()-started)/1000),eta=Math.ceil((bytes.length-offset)/rate);
+  $('progress').value=percent;$('percent').textContent=percent.toFixed(1)+'% · '+(rate/1024).toFixed(2)+' KiB/s · 剩餘約 '+Math.floor(eta/60)+'分 '+eta%60+'秒';
+ }
  await control('OTA:END','DONE');updated=true;show('韌體已驗證，裝置即將重啟。請等待約 15 秒後重新連線，網頁將自動校時。','success');
  }catch(e){try{if(writeChar)await send('OTA:ABORT');}catch(_){}show('更新未確認完成：'+e.message,'error');}
- finally{busy=false;$('abort').disabled=true;$('connect').disabled=false;const ok=!!writeChar;$('sync').disabled=!ok;$('read').disabled=!ok;$('ota').disabled=!otaChar;}
+ finally{busy=false;cfgControls(!!writeChar);$('abort').disabled=true;$('connect').disabled=false;const ok=!!writeChar;$('sync').disabled=!ok;$('read').disabled=!ok;$('ota').disabled=!otaChar;}
 };
 </script></body></html>
