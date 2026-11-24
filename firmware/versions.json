@@ -1,4 +1,10 @@
 {
-  "latest": null,
-  "versions": []
+  "latest": "1.1.0",
+  "versions": [
+    {
+      "version": "1.1.0",
+      "file": "ESP32CAM_v1.1.0.bin",
+      "description": "Initial BLE OTA firmware"
+    }
+  ]
 }
