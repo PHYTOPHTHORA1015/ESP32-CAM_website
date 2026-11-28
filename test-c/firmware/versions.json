@@ -4,7 +4,12 @@
     {
       "version": "1.4.1",
       "file": "ESP32CAM_v1.4.1.bin",
-      "description": "Wi-Fi OTA 正式整合版，支援 Android 及 iOS 程式碼更新"
+      "description": "Wi-Fi OTA 正式整合版，Zero"
+    },
+    {
+      "version": "1.4.1",
+      "file": "ESP32CAM_TY_v1.4.1.bin",
+      "description": "Wi-Fi OTA 正式整合版，TY"
     },
     {
       "version": "1.4.0",
