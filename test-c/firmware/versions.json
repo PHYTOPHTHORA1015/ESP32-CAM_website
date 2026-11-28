@@ -2,8 +2,13 @@
   "latest": "1.4.1",
   "versions": [
     {
+      "version": "1.4.2",
+      "file": "ESP32CAM_Zero_v1.4.2.bin",
+      "description": "Wi-Fi OTA 正式整合版，Zero"
+    },
+    {
       "version": "1.4.1",
-      "file": "ESP32CAM_v1.4.1.bin",
+      "file": "ESP32CAM_Zero_v1.4.1.bin",
       "description": "Wi-Fi OTA 正式整合版，Zero"
     },
     {
