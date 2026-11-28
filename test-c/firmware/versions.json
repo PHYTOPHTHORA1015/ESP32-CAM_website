@@ -1,0 +1,10 @@
+{
+  "latest": "1.4.0",
+  "versions": [
+    {
+      "version": "1.4.0",
+      "file": "ESP32CAM_v1.4.0.bin",
+      "description": "Wi-Fi AP 程式碼傳輸測試"
+    }
+  ]
+}
