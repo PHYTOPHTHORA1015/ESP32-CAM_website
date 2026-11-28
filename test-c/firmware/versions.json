@@ -1,10 +1,15 @@
 {
-  "latest": "1.4.0",
+  "latest": "1.4.1",
   "versions": [
+    {
+      "version": "1.4.1",
+      "file": "ESP32CAM_v1.4.1.bin",
+      "description": "Wi-Fi OTA 正式整合版，支援 Android 及 iOS 程式碼更新"
+    },
     {
       "version": "1.4.0",
       "file": "ESP32CAM_v1.4.0.bin",
-      "description": "Wi-Fi AP 程式碼傳輸測試"
+      "description": "Wi-Fi AP 控制版，支援校時、拍照及 LED 排程"
     }
   ]
 }
