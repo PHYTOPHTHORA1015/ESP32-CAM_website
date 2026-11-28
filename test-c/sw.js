@@ -1,4 +1,2 @@
-const CACHE='esp32-ota-c-test-v3';
-self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['./index.html'])).then(()=>self.skipWaiting()))});
-self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));
-self.addEventListener('fetch',e=>{if(e.request.mode==='navigate'&&new URL(e.request.url).origin===self.location.origin)e.respondWith(fetch(e.request).catch(()=>caches.open(CACHE).then(c=>c.match('./index.html'))))});
+self.addEventListener('install',e=>e.waitUntil(self.skipWaiting()));
+self.addEventListener('activate',e=>e.waitUntil((async()=>{for(const k of await caches.keys())if(k.startsWith('esp32-ota-c-test-'))await caches.delete(k);await self.clients.claim();})()));
